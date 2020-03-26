@@ -18,4 +18,6 @@ import java.lang.annotation.Target;
 public @interface SpiritField {
 
 	String desc();
+	
+	boolean mandatory() default true;
 }

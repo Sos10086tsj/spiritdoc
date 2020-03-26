@@ -40,8 +40,8 @@ public @interface SpiritDoc {
 	String pageTitle() default "";
 	
 	/**
-	 * 	页面内容。可传递markdown格式的文本或者html源码。
+	 * 	描述
 	 * @return
 	 */
-	String pageContent() default "";
+	String description() default "";
 }

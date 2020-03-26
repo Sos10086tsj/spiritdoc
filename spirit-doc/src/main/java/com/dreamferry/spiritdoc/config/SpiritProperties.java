@@ -21,17 +21,26 @@ public class SpiritProperties {
 	private String scanPackage;
 	
 	/**
-	 * 	自定义请求注解
+	 * 	showDoc 地址
 	 */
-	@Value("${spiritDoc.requestAnnotationName}")
-	private String requestAnnotationName;
-	
 	@Value("${spiritDoc.showDoc.host}")
 	private String showDocHost;
 	
+	/**
+	 * 	showDoc api_key
+	 */
 	@Value("${spiritDoc.showDoc.apiKey}")
 	private String showDocApiKey;
 	
+	/**
+	 * 	showDoc api_token
+	 */
 	@Value("${spiritDoc.showDoc.apiToken}")
 	private String showDocApiToken;
+	
+	/**
+	 * 	showDoc 应用前缀地址
+	 */
+	@Value("${spiritDoc.showDoc.apiHost}")
+	private String showDocApiHost;
 }

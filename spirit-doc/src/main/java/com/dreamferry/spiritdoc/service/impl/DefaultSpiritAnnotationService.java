@@ -1,12 +1,19 @@
 package com.dreamferry.spiritdoc.service.impl;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.io.FileUtils;
 import org.reflections.Reflections;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,62 +21,81 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.dreamferry.spiritdoc.annotation.SpiritDoc;
+import com.dreamferry.spiritdoc.annotation.SpiritField;
 import com.dreamferry.spiritdoc.config.SpiritProperties;
 import com.dreamferry.spiritdoc.model.ShowDocItem;
 import com.dreamferry.spiritdoc.service.SpiritAnnotationService;
 import com.dreamferry.spiritdoc.util.HttpUtil;
 
+import freemarker.template.Configuration;
+import freemarker.template.Template;
 import lombok.extern.slf4j.Slf4j;
 
-/** 
-* Description: 
-* @author paris tao
-* @version 1.0.0 2020年3月26日 下午1:07:28
-*/
+/**
+ * Description:
+ * 
+ * @author paris tao
+ * @version 1.0.0 2020年3月26日 下午1:07:28
+ */
 @Service("defaultSpiritAnnotationService")
 @Slf4j
-public class DefaultSpiritAnnotationService implements SpiritAnnotationService{
+public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 
 	@Autowired
 	private SpiritProperties spiritProperties;
-	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+
 	@Override
 	public void parseDocumention() {
-		//1. 获取注解的类
+		// 1. 获取注解的类
 		Reflections reflections = new Reflections(spiritProperties.getScanPackage());
 		Set<Class<?>> classSet = reflections.getTypesAnnotatedWith(SpiritDoc.class);
-		Class requestAnnotationClass = null;
-		if (!StringUtils.isEmpty(spiritProperties.getRequestAnnotationName())) {
-			try {
-				requestAnnotationClass = Class.forName(spiritProperties.getRequestAnnotationName());
-			} catch (ClassNotFoundException e) {
-				log.error("{}", e);
-			}
-		}
 		List<ShowDocItem> items = new ArrayList<ShowDocItem>();
 		for (Class<?> targetClass : classSet) {
-			//获取方法
+			// 获取方法
+			String classApiPath = "";
+			if (null != targetClass.getClass().getAnnotation(RequestMapping.class)) {
+				classApiPath += targetClass.getClass().getAnnotation(RequestMapping.class).value();
+				if (!classApiPath.endsWith("/")) {
+					classApiPath += "/";
+				}
+			}
+
 			Method[] methods = targetClass.getMethods();
 			for (Method method : methods) {
 				boolean isReqeustMethod = false;
-				if (null != method.getAnnotation(RequestMapping.class) 
-						|| null != method.getAnnotation(ResponseBody.class)
-						|| null != method.getAnnotation(GetMapping.class)
-						|| null != method.getAnnotation(PostMapping.class)
-						) {
+				String apiPath = null;
+				String[] requestMethods = null;
+				if (null != method.getAnnotation(RequestMapping.class)) {
 					isReqeustMethod = true;
+					apiPath = classApiPath + method.getAnnotation(RequestMapping.class).value();
+					if (null == method.getAnnotation(RequestMapping.class).method()) {
+						requestMethods = new String[] { "GET", "POST" };
+					} else {
+						RequestMethod[] requestMappingMethods = method.getAnnotation(RequestMapping.class).method();
+						requestMethods = new String[requestMappingMethods.length];
+						for (int j = 0; j < requestMappingMethods.length; j++) {
+							requestMethods[j] = requestMappingMethods[j].name();
+						}
+					}
 				}
-				if (null != requestAnnotationClass && null != method.getAnnotation(requestAnnotationClass)) {
+				if (null != method.getAnnotation(GetMapping.class)) {
 					isReqeustMethod = true;
+					apiPath = classApiPath + method.getAnnotation(GetMapping.class).value();
+					requestMethods = new String[] { "GET" };
+				}
+				if (null != method.getAnnotation(PostMapping.class)) {
+					isReqeustMethod = true;
+					apiPath = classApiPath + method.getAnnotation(PostMapping.class).value();
+					requestMethods = new String[] { "POST" };
 				}
 				if (isReqeustMethod) {
-					ShowDocItem item = this.parseAnnotation(targetClass.getAnnotation(SpiritDoc.class), method);
+					ShowDocItem item = this.parseAnnotation(apiPath, requestMethods,
+							targetClass.getAnnotation(SpiritDoc.class), method);
 					items.add(item);
 				}
 			}
@@ -80,44 +106,110 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService{
 	}
 
 	/**
-	 * 	解析注解
+	 * 解析注解
+	 * 
 	 * @param classAnnotation
 	 * @param method
 	 * @return
 	 */
-	private ShowDocItem parseAnnotation(SpiritDoc classAnnotation, Method method) {
-//		AnnotationType type = classAnnotation.type();
+	private ShowDocItem parseAnnotation(String apiPath, String[] requestMethods, SpiritDoc classAnnotation,
+			Method method) {
 		String categoryName = classAnnotation.categoryName() + "/";
 		String pageTitle = classAnnotation.pageTitle() + "-";
-		String pageContent = classAnnotation.pageContent() + "<br/>";
-		
+
 		SpiritDoc methodAnnotation = method.getAnnotation(SpiritDoc.class);
 		if (null != methodAnnotation) {
 			if (StringUtils.isEmpty(methodAnnotation.categoryName())) {
 				categoryName += method.getName();
-			}else {
+			} else {
 				categoryName += methodAnnotation.categoryName();
 			}
 			if (StringUtils.isEmpty(methodAnnotation.pageTitle())) {
 				pageTitle += method.getName();
-			}else {
+			} else {
 				pageTitle += methodAnnotation.pageTitle();
 			}
-			if (StringUtils.isEmpty(methodAnnotation.pageContent())) {
-				pageContent += method.getName();
-			}else {
-				pageContent += methodAnnotation.pageContent();
-			}
-		}else {
+		} else {
 			categoryName += method.getName();
 			pageTitle += method.getName();
-			pageContent += method.getName();
 		}
+
+		// 自动根据参数、返回数据格式，拼装pageContent
+		Map<String, Object> model = new HashMap<String, Object>();
+		if (null != methodAnnotation
+				&& org.apache.commons.lang3.StringUtils.isNotEmpty(methodAnnotation.description())) {
+			model.put("descirption", methodAnnotation.description());
+		} else {
+			model.put("descirption", method.getName());
+		}
+		model.put("host", spiritProperties.getShowDocApiHost());
+		model.put("apiPath", apiPath);
+		model.put("methodList", requestMethods);
+
+		Class<?>[] parameterTypes = method.getParameterTypes();
+		List<Map<String, String>> paramList = new ArrayList<Map<String,String>>();
+		if (null != parameterTypes) {
+			for (Class<?> parameterType : parameterTypes) {
+				paramList.addAll(this.parseReqeustParameters(parameterType));
+			}
+		}
+		model.put("paramList", paramList);
+
+		Class<?> returnType = method.getReturnType();
+		String returnStructure = null;
+		List<Map<String, String>> responseParamList = new ArrayList<Map<String,String>>();
+		if (returnType.getClass().equals(Void.class)) {
+			returnStructure = "Void";
+		} else if (returnType.getClass().equals(Integer.class)) {
+			returnStructure = "Integer";
+		} else if (returnType.getClass().equals(Long.class)) {
+			returnStructure = "Long";
+		} else if (returnType.getClass().equals(BigDecimal.class)) {
+			returnStructure = "BigDecimal";
+		} else {
+			try {
+				returnStructure = JSON.toJSONString(returnType.newInstance());
+				// TODO 封装 responseParamList
+			} catch (Exception e) {
+				log.error("{}", e);
+			}
+		}
+		model.put("responeStruct", null == returnStructure ? "" : returnStructure);
+		model.put("responseParamList", responseParamList);
+
+		String pageContent = this.fillupTempalte(model);
 		return new ShowDocItem(categoryName, pageTitle, pageContent);
 	}
-	
+
 	/**
-	 * 	https://www.showdoc.cc/page/102098
+	 * 逐个解析参数
+	 * 
+	 * @param parameter
+	 * @return
+	 */
+	private List<Map<String, String>> parseReqeustParameters(Class<?> parameterType) {
+		List<Map<String, String>> list = new ArrayList<Map<String,String>>();
+		Field[] fields = parameterType.getDeclaredFields();
+		for (Field field : fields) {
+			Map<String, String> map = new HashMap<String, String>();
+			map.put("fieldName", field.getName());
+			SpiritField spiritField = field.getAnnotation(SpiritField.class);
+			if (null == spiritField) {
+				map.put("mandatory", "否");
+				map.put("fieldDesc", "");
+			}else {
+				map.put("mandatory", spiritField.mandatory() ? "是" : "否");
+				map.put("fieldDesc", spiritField.desc());
+			}
+			map.put("fieldType", field.getType().getSimpleName());
+			list.add(map);
+		}
+		return list;
+	}
+
+	/**
+	 * API请求showdoc https://www.showdoc.cc/page/102098
+	 * 
 	 * @param item
 	 */
 	private void send2ShowDoc(ShowDocItem item) {
@@ -128,10 +220,36 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService{
 		parameters.put("page_title", item.getPageTitle());
 		parameters.put("page_content", item.getPageContent());
 		System.out.println(JSON.toJSONString(parameters));
-		String responseText = HttpUtil.post(spiritProperties.getShowDocHost(), parameters, "application/x-www-form-urlencoded");
+		String responseText = HttpUtil.post(spiritProperties.getShowDocHost(), parameters,
+				"application/x-www-form-urlencoded");
 		JSONObject jo = JSON.parseObject(responseText);
 		if (jo.getInteger("error_code").intValue() != 0) {
 			log.error("{}", responseText);
 		}
+	}
+
+	private String fillupTempalte(Map<String, Object> model) {
+		Configuration configuration = new Configuration(Configuration.getVersion());
+		StringWriter result = new StringWriter();
+		try {
+			String templateStr = FileUtils.readFileToString(new File(
+					"D:\\dev\\sourcecode\\github\\spiritdoc\\spirit-doc\\src\\main\\resources\\template\\showdoc\\Java_API_template.tmpl"), "utf-8");
+			Template t = new Template("Java_API_template", new StringReader(templateStr), configuration);
+			t.process(model, result);
+
+			return result.toString();
+		} catch (Exception e) {
+			log.error("{}", e);
+		} finally {
+			if (null != result) {
+				try {
+					result.close();
+				} catch (IOException e) {
+					log.error("{}", e);
+				}
+			}
+
+		}
+		return null;
 	}
 }
