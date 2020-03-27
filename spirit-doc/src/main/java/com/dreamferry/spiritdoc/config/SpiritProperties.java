@@ -43,4 +43,10 @@ public class SpiritProperties {
 	 */
 	@Value("${spiritDoc.showDoc.apiHost}")
 	private String showDocApiHost;
+	
+	/**
+	 * 	showDoc 应用前缀地址
+	 */
+	@Value("${spiritDoc.showDoc.javaApiTemplate}")
+	private String showDocJavaApiTemplate;
 }

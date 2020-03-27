@@ -1,6 +1,5 @@
 package com.dreamferry.spiritdoc.service.impl;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -19,6 +18,7 @@ import org.apache.commons.io.FileUtils;
 import org.reflections.Reflections;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -287,8 +287,8 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		Configuration configuration = new Configuration(Configuration.getVersion());
 		StringWriter result = new StringWriter();
 		try {
-			String templateStr = FileUtils.readFileToString(new File(
-					"D:\\dev\\sourcecode\\github\\spiritdoc\\spirit-doc\\src\\main\\resources\\template\\showdoc\\Java_API_template.tmpl"), "utf-8");
+			
+			String templateStr = FileUtils.readFileToString(ResourceUtils.getFile(spiritProperties.getShowDocJavaApiTemplate()), "utf-8");
 			Template t = new Template("Java_API_template", new StringReader(templateStr), configuration);
 			t.process(model, result);
 
