@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.dreamferry.spiritdoc.annotation.SpiritDoc;
 import com.dreamferry.spiritdoc.annotation.SpiritField;
 import com.dreamferry.spiritdoc.config.SpiritProperties;
@@ -187,7 +188,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 			returnStructure = "Date";
 		}else {
 			try {
-				returnStructure = JSON.toJSONString(JMockData.mock(returnType));
+				returnStructure = JSON.toJSONString(JMockData.mock(returnType), SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue, SerializerFeature.WriteDateUseDateFormat);
 				responseParamList.addAll(this.parseResponseParameters(returnType, null));
 				model.put("hasResponseDesc", 1);
 			} catch (Exception e) {
