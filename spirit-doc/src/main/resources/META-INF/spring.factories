@@ -1,0 +1,1 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.dreamferry.spiritdoc.config.SpiritDocAutoConfiguration

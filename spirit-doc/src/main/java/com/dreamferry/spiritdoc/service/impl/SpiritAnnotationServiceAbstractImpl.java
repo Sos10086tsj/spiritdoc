@@ -1,4 +1,9 @@
 package com.dreamferry.spiritdoc.service.impl;
+/** 
+* Description: 
+* @author paris tao
+* @version 1.0.0 2020年3月27日 下午1:40:36
+*/
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -37,37 +42,31 @@ import com.github.jsonzou.jmockdata.JMockData;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Description:
- * 
- * @author paris tao
- * @version 1.0.0 2020年3月26日 下午1:07:28
- */
 @Slf4j
-public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceAbstractImpl
-		implements SpiritAnnotationService {
+public abstract class SpiritAnnotationServiceAbstractImpl implements SpiritAnnotationService{
+
 	@Override
 	public void parseDocumention(SpiritProperties spiritProperties) {
-		// 1. 获取注解的类
 		Reflections reflections = new Reflections(spiritProperties.getScanPackage());
-		Set<Class<?>> classSet = reflections.getTypesAnnotatedWith(Api.class);
+		Set<Class<?>> classSet = reflections.getTypesAnnotatedWith(getAnnotationClass());
 		List<ShowDocItem> items = new ArrayList<ShowDocItem>();
 		for (Class<?> targetClass : classSet) {
 			String classApiPath = "";
-			if (null != targetClass.getAnnotation(RequestMapping.class)
-					&& targetClass.getAnnotation(RequestMapping.class).value().length > 0) {
+			if (null != targetClass.getAnnotation(RequestMapping.class) && targetClass.getAnnotation(RequestMapping.class).value().length > 0) {
 				classApiPath += targetClass.getAnnotation(RequestMapping.class).value()[0];
 				if (!classApiPath.endsWith("/")) {
 					classApiPath += "/";
 				}
 			}
-
+			
 			Method[] methods = targetClass.getMethods();
 			for (Method method : methods) {
+				Annotation annotation = method.getAnnotation(getMethodAnnotationClass());
+				if (null == annotation) {
+					continue;
+				}
 				boolean isReqeustMethod = false;
 				String apiPath = null;
 				String[] requestMethods = null;
@@ -102,7 +101,7 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 				}
 				if (isReqeustMethod) {
 					ShowDocItem item = this.parseAnnotation(spiritProperties, apiPath, requestMethods,
-							targetClass.getAnnotation(Api.class), method);
+							targetClass.getAnnotation(getAnnotationClass()), method);
 					items.add(item);
 				}
 			}
@@ -112,28 +111,47 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 		});
 	}
 
-	private ShowDocItem parseAnnotation(SpiritProperties spiritProperties, String apiPath, String[] requestMethods,
-			Api classAnnotation, Method method) {
-		String categoryName = "SWAGGER/" + classAnnotation.value() + "/";
+	/**
+	 * 	获取类注解
+	 * @return
+	 */
+	protected abstract Class<? extends Annotation> getAnnotationClass();
+	
+	/**
+	 * 	获取方法注解
+	 * @return
+	 */
+	protected abstract Class<? extends Annotation> getMethodAnnotationClass();
+	
+	/**
+	 * 	获取转换为 showDoc的参数
+	 * @param classAnnotation
+	 * @param method
+	 * @return
+	 */
+	protected abstract ShowDocProcessInfo getDocProcessInfo(Annotation classAnnotation, Method method);
+	
+	private ShowDocItem parseAnnotation(SpiritProperties spiritProperties, String apiPath, String[] requestMethods, Annotation classAnnotation,
+			Method method) {
 
-		ApiOperation apiOperation = method.getAnnotation(ApiOperation.class);
-		categoryName += apiOperation.value();
-		String pageTitle = apiOperation.value();
+		ShowDocProcessInfo processInfo = getDocProcessInfo(classAnnotation, method);
 
 		Map<String, Object> model = new HashMap<String, Object>();
-		model.put("descirption", null == apiOperation.value() ? method.getName() : apiOperation.value());
+		model.put("descirption", processInfo.getDescirption());
 		model.put("host", spiritProperties.getShowDocApiHost());
 		model.put("apiPath", apiPath);
 		model.put("methodList", requestMethods);
+
 		Class<?>[] parameterTypes = method.getParameterTypes();
-		List<Map<String, String>> paramList = new ArrayList<Map<String, String>>();
+		List<Map<String, String>> paramList = new ArrayList<Map<String,String>>();
 		if (null != parameterTypes) {
 			for (int i = 0; i < parameterTypes.length; i++) {
 				Class<?> parameterType = parameterTypes[i];
 				if (parameterType.equals(Integer.class) || parameterType.getName().equals("int")
-						|| parameterType.equals(Long.class) || parameterType.getName().equals("long")) {
+						|| parameterType.equals(Long.class) || parameterType.getName().equals("long")
+						) {
 					paramList.add(this.parseRequestConstParameters(parameterType, method.getParameters()[i]));
-				} else {
+				}else {
 					paramList.addAll(this.parseReqeustParameters(parameterType, null));
 				}
 			}
@@ -143,7 +161,7 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 
 		Class<?> returnType = method.getReturnType();
 		String returnStructure = null;
-		List<Map<String, String>> responseParamList = new ArrayList<Map<String, String>>();
+		List<Map<String, String>> responseParamList = new ArrayList<Map<String,String>>();
 		model.put("hasResponseDesc", 0);
 		if (returnType.equals(Void.class) || returnType.getName().equals("void")) {
 			returnStructure = "Void";
@@ -155,10 +173,9 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 			returnStructure = "BigDecimal";
 		} else if (returnType.equals(Date.class)) {
 			returnStructure = "Date";
-		} else {
+		}else {
 			try {
-				returnStructure = JSON.toJSONString(JMockData.mock(returnType), SerializerFeature.PrettyFormat,
-						SerializerFeature.WriteMapNullValue, SerializerFeature.WriteDateUseDateFormat);
+				returnStructure = JSON.toJSONString(JMockData.mock(returnType), SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue, SerializerFeature.WriteDateUseDateFormat);
 				responseParamList.addAll(this.parseResponseParameters(returnType, null));
 				model.put("hasResponseDesc", 1);
 			} catch (Exception e) {
@@ -169,14 +186,13 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 		model.put("responseParamList", responseParamList);
 
 		String pageContent = this.fillupTempalte(model, spiritProperties);
-		return new ShowDocItem(categoryName, pageTitle, pageContent);
+		return new ShowDocItem(processInfo.getCategoryName(), processInfo.getPageTitle(), pageContent);
 	}
-
+	
 	/**
-	 * 解析常量类型
-	 * 
+	 * 	解析参数
 	 * @param parameterType
-	 * @param parameterName
+	 * @param parameter
 	 * @return
 	 */
 	private Map<String, String> parseRequestConstParameters(Class<?> parameterType, Parameter parameter) {
@@ -187,63 +203,73 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 		map.put("fieldType", parameterType.getSimpleName());
 		return map;
 	}
-
+	
 	/**
-	 * 逐个解析参数
-	 * 
-	 * @param parameter
+	 * 	解析参数
+	 * @param parameterType
+	 * @param prefix
 	 * @return
 	 */
 	private List<Map<String, String>> parseReqeustParameters(Class<?> parameterType, String prefix) {
-		List<Map<String, String>> list = new ArrayList<Map<String, String>>();
+		List<Map<String, String>> list = new ArrayList<Map<String,String>>();
 		Field[] fields = parameterType.getDeclaredFields();
 		for (Field field : fields) {
 			Map<String, String> map = new HashMap<String, String>();
 			map.put("fieldName", (null == prefix ? "" : prefix + ".") + field.getName());
 			Class<?> fieldType = field.getType();
 			map.put("fieldType", fieldType.getSimpleName());
-
-			if (fieldType.equals(Integer.class) || fieldType.getName().equals("int") || fieldType.equals(Long.class)
-					|| fieldType.getName().equals("long") || fieldType.equals(String.class)
-					|| fieldType.equals(BigDecimal.class) || fieldType.equals(Date.class)) {
-				map.put("mandatory", "否");
-				map.put("fieldDesc", "-");
+			if (fieldType.equals(Integer.class) || fieldType.getName().equals("int")
+					|| fieldType.equals(Long.class) || fieldType.getName().equals("long")
+					|| fieldType.equals(String.class)
+					|| fieldType.equals(BigDecimal.class)
+					|| fieldType.equals(Date.class)) {
+				parseRequestFieldModelMap(field, map);
 				list.add(map);
-			} else {
+			}else {
 				list.addAll(this.parseReqeustParameters(fieldType, map.get("fieldName")));
 			}
 		}
 		return list;
 	}
-
+	
+	/**
+	 * 	解析字段注解
+	 * @param field
+	 * @param map
+	 */
+	protected abstract void parseRequestFieldModelMap(Field field, Map<String, String> map);
+	
 	private List<Map<String, String>> parseResponseParameters(Class<?> parameterType, String prefix) {
-		List<Map<String, String>> list = new ArrayList<Map<String, String>>();
+		List<Map<String, String>> list = new ArrayList<Map<String,String>>();
 		Field[] fields = parameterType.getDeclaredFields();
 		for (Field field : fields) {
 			Map<String, String> map = new HashMap<String, String>();
 			map.put("fieldName", (null == prefix ? "" : prefix + ".") + field.getName());
 			Class<?> fieldType = field.getType();
 			map.put("fieldType", fieldType.getSimpleName());
-
-			if (fieldType.equals(Integer.class) || fieldType.getName().equals("int") || fieldType.equals(Long.class)
-					|| fieldType.getName().equals("long") || fieldType.equals(String.class)
-					|| fieldType.equals(BigDecimal.class) || fieldType.equals(Date.class)) {
-				map.put("fieldDesc", "-");
+			
+			if (fieldType.equals(Integer.class) || fieldType.getName().equals("int")
+					|| fieldType.equals(Long.class) || fieldType.getName().equals("long")
+					|| fieldType.equals(String.class)
+					|| fieldType.equals(BigDecimal.class)
+					|| fieldType.equals(Date.class)) {
+				parseResponseFieldModelMap(field, map);
 				list.add(map);
-			} else {
+			}else {
 				list.addAll(this.parseResponseParameters(fieldType, map.get("fieldName")));
 			}
 		}
 		return list;
 	}
-
+	
+	protected abstract void parseResponseFieldModelMap(Field field, Map<String, String> map);
+	
 	private String fillupTempalte(Map<String, Object> model, SpiritProperties spiritProperties) {
 		Configuration configuration = new Configuration(Configuration.getVersion());
 		StringWriter result = new StringWriter();
 		try {
 			ClassPathResource resource = new ClassPathResource(spiritProperties.getShowDocJavaApiTemplate());
-			String templateStr = new BufferedReader(new InputStreamReader(resource.getInputStream(), "UTF-8")).lines()
-					.collect(Collectors.joining(System.lineSeparator()));
+			String templateStr = new BufferedReader(new InputStreamReader(resource.getInputStream(), "UTF-8")).lines().collect(Collectors.joining(System.lineSeparator()));
 			Template t = new Template("Java_API_template", new StringReader(templateStr), configuration);
 			t.process(model, result);
 			return result.toString();
@@ -261,7 +287,12 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 		}
 		return null;
 	}
-
+	
+	/**
+	 * API请求showdoc https://www.showdoc.cc/page/102098
+	 * 
+	 * @param item
+	 */
 	private void send2ShowDoc(ShowDocItem item, SpiritProperties spiritProperties) {
 		Map<String, String> parameters = new HashMap<String, String>();
 		parameters.put("api_key", spiritProperties.getShowDocApiKey());
@@ -276,40 +307,5 @@ public class SpiritAnnotationServiceSwaggerImpl extends SpiritAnnotationServiceA
 		if (jo.getInteger("error_code").intValue() != 0) {
 			log.error("{}", responseText);
 		}
-	}
-
-	@Override
-	protected Class<? extends Annotation> getAnnotationClass() {
-		return Api.class;
-	}
-
-	@Override
-	protected Class<? extends Annotation> getMethodAnnotationClass() {
-		return ApiOperation.class;
-	}
-
-	@Override
-	protected ShowDocProcessInfo getDocProcessInfo(Annotation classAnnotation, Method method) {
-		ShowDocProcessInfo processInfo = new ShowDocProcessInfo();
-		Api api = (Api) classAnnotation;
-		String categoryName = "SWAGGER/" + api.value() + "/";
-		ApiOperation apiOperation = method.getAnnotation(ApiOperation.class);
-		categoryName += apiOperation.value();
-		processInfo.setCategoryName(categoryName);
-		processInfo.setPageTitle(apiOperation.value());
-		processInfo.setDescirption(null == apiOperation.value() ? method.getName() : apiOperation.value());
-
-		return processInfo;
-	}
-
-	@Override
-	protected void parseRequestFieldModelMap(Field field, Map<String, String> map) {
-		map.put("mandatory", "否");
-		map.put("fieldDesc", "-");
-	}
-
-	@Override
-	protected void parseResponseFieldModelMap(Field field, Map<String, String> map) {
-		map.put("fieldDesc", "-");
 	}
 }

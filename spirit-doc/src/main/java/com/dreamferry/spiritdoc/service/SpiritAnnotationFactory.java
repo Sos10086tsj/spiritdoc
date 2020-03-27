@@ -1,5 +1,6 @@
 package com.dreamferry.spiritdoc.service;
 
+import com.dreamferry.spiritdoc.config.SpiritProperties;
 import com.dreamferry.spiritdoc.enums.AnnotationType;
 
 /** 
@@ -9,4 +10,8 @@ import com.dreamferry.spiritdoc.enums.AnnotationType;
 */
 public interface SpiritAnnotationFactory {
 	public SpiritAnnotationService getInstance(AnnotationType type, SpiritAnnotationService extServiceInstance);
+	
+	public void autoScan(SpiritProperties properties);
+	
+	public void init();
 }

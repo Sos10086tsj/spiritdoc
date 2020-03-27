@@ -11,7 +11,7 @@
 	</parent>
 
 	<groupId>com.dreamferry</groupId>
-	<artifactId>spirit-doc</artifactId>
+	<artifactId>spirit-doc-spring-boot-starter</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
@@ -34,6 +34,7 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+			<scope>compile</scope>
 		</dependency>
 
 		<dependency>
@@ -100,7 +101,7 @@
 	</dependencies>
 
 	<build>
-		<finalName>spirit-doc</finalName>
+		<finalName>spirit-doc-spring-boot-starter</finalName>
 		<directory>${project.basedir}/target</directory>
 		<outputDirectory>${project.build.directory}/classes</outputDirectory>
 		<sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
@@ -123,19 +124,6 @@
 					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
 		</plugins>
-		<resources>
-			<resource>
-				<filtering>true</filtering>
-				<directory>src/main/resources</directory>
-				<excludes>
-					<exclude>/**</exclude>
-				</excludes>
-			</resource>
-		</resources>
 	</build>
 </project>
