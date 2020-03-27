@@ -33,6 +33,7 @@ import com.dreamferry.spiritdoc.config.SpiritProperties;
 import com.dreamferry.spiritdoc.model.ShowDocItem;
 import com.dreamferry.spiritdoc.service.SpiritAnnotationService;
 import com.dreamferry.spiritdoc.util.HttpUtil;
+import com.github.jsonzou.jmockdata.JMockData;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -123,7 +124,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 	private ShowDocItem parseAnnotation(String apiPath, String[] requestMethods, SpiritDoc classAnnotation,
 			Method method) {
 		String categoryName = classAnnotation.categoryName() + "/";
-		String pageTitle = classAnnotation.pageTitle() + "-";
+		String pageTitle = "";
 
 		SpiritDoc methodAnnotation = method.getAnnotation(SpiritDoc.class);
 		if (null != methodAnnotation) {
@@ -186,7 +187,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 			returnStructure = "Date";
 		}else {
 			try {
-				returnStructure = JSON.toJSONString(returnType.newInstance());
+				returnStructure = JSON.toJSONString(JMockData.mock(returnType));
 				responseParamList.addAll(this.parseResponseParameters(returnType));
 				model.put("hasResponseDesc", 1);
 			} catch (Exception e) {

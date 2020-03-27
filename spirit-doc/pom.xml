@@ -26,6 +26,7 @@
 		<commons-httpclient.version>3.1</commons-httpclient.version>
 		<fastjson.version>1.2.58</fastjson.version>
 		<commons-io.version>2.6</commons-io.version>
+		<jmockdata.version>4.2.0</jmockdata.version>
 	</properties>
 
 	<dependencies>
@@ -81,6 +82,12 @@
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.github.jsonzou</groupId>
+			<artifactId>jmockdata</artifactId>
+			<version>${jmockdata.version}</version>
 		</dependency>
 	</dependencies>
 </project>
