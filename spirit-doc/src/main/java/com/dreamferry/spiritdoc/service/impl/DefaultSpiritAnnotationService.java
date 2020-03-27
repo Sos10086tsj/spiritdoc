@@ -1,6 +1,8 @@
 package com.dreamferry.spiritdoc.service.impl;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
@@ -13,12 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
 import org.reflections.Reflections;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -293,6 +295,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		parameters.put("cat_name", item.getCategoryName());
 		parameters.put("page_title", item.getPageTitle());
 		parameters.put("page_content", item.getPageContent());
+
 		String responseText = HttpUtil.post(spiritProperties.getShowDocHost(), parameters,
 				"application/x-www-form-urlencoded");
 		JSONObject jo = JSON.parseObject(responseText);
@@ -305,11 +308,10 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		Configuration configuration = new Configuration(Configuration.getVersion());
 		StringWriter result = new StringWriter();
 		try {
-			
-			String templateStr = FileUtils.readFileToString(ResourceUtils.getFile(spiritProperties.getShowDocJavaApiTemplate()), "utf-8");
+			ClassPathResource resource = new ClassPathResource(spiritProperties.getShowDocJavaApiTemplate());
+			String templateStr = new BufferedReader(new InputStreamReader(resource.getInputStream(), "UTF-8")).lines().collect(Collectors.joining(System.lineSeparator()));
 			Template t = new Template("Java_API_template", new StringReader(templateStr), configuration);
 			t.process(model, result);
-
 			return result.toString();
 		} catch (Exception e) {
 			log.error("{}", e);
