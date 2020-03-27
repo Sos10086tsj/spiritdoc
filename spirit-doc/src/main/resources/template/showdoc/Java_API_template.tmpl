@@ -20,14 +20,15 @@
 ``` 
   ${responeStruct}
 ```
-
+<#if hasResponseDesc == 1>
  **返回参数说明** 
 
 |参数名|类型|说明|
-|:-----  |:-----|-----  
+|:-----  |:-----|----- 
 <#list responseParamList as responseParam>     
-|${responseParam.fieldName} |${responseParam.fieldType}|${responseParam.fieldDesc}|                    |
+|${responseParam.fieldName} |${responseParam.fieldType}|${responseParam.fieldDesc}|
 </#list>
+</#if>
  **备注** 
 
 - 更多返回错误代码请看首页的错误代码描述
