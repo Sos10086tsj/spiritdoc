@@ -86,6 +86,13 @@ public class DemoController {
 		this.factory.getInstance(null).parseDocumention();
 	}
 	
+	@RequestMapping(value = "demo/test2")
+	@SpiritDoc(categoryName = "测试打印2", pageTitle = "DemoTest2")
+	public Demo demoTest2(Demo demo) {
+		this.factory.getInstance(null).parseDocumention();
+		return null;
+	}
+	
 	private void print() {
 		System.out.println(System.currentTimeMillis());
 	}

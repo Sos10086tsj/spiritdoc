@@ -6,8 +6,10 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,8 +60,8 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		for (Class<?> targetClass : classSet) {
 			// 获取方法
 			String classApiPath = "";
-			if (null != targetClass.getClass().getAnnotation(RequestMapping.class)) {
-				classApiPath += targetClass.getClass().getAnnotation(RequestMapping.class).value();
+			if (null != targetClass.getAnnotation(RequestMapping.class) && targetClass.getAnnotation(RequestMapping.class).value().length > 0) {
+				classApiPath += targetClass.getAnnotation(RequestMapping.class).value()[0];
 				if (!classApiPath.endsWith("/")) {
 					classApiPath += "/";
 				}
@@ -72,7 +74,9 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 				String[] requestMethods = null;
 				if (null != method.getAnnotation(RequestMapping.class)) {
 					isReqeustMethod = true;
-					apiPath = classApiPath + method.getAnnotation(RequestMapping.class).value();
+					if (method.getAnnotation(RequestMapping.class).value().length > 0) {
+						apiPath = classApiPath + method.getAnnotation(RequestMapping.class).value()[0];
+					}
 					if (null == method.getAnnotation(RequestMapping.class).method()) {
 						requestMethods = new String[] { "GET", "POST" };
 					} else {
@@ -85,12 +89,16 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 				}
 				if (null != method.getAnnotation(GetMapping.class)) {
 					isReqeustMethod = true;
-					apiPath = classApiPath + method.getAnnotation(GetMapping.class).value();
+					if (method.getAnnotation(GetMapping.class).value().length > 0) {
+						apiPath = classApiPath + method.getAnnotation(GetMapping.class).value()[0];
+					}
 					requestMethods = new String[] { "GET" };
 				}
 				if (null != method.getAnnotation(PostMapping.class)) {
 					isReqeustMethod = true;
-					apiPath = classApiPath + method.getAnnotation(PostMapping.class).value();
+					if (method.getAnnotation(PostMapping.class).value().length > 0) {
+						apiPath = classApiPath + method.getAnnotation(PostMapping.class).value()[0];
+					}
 					requestMethods = new String[] { "POST" };
 				}
 				if (isReqeustMethod) {
@@ -149,8 +157,15 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		Class<?>[] parameterTypes = method.getParameterTypes();
 		List<Map<String, String>> paramList = new ArrayList<Map<String,String>>();
 		if (null != parameterTypes) {
-			for (Class<?> parameterType : parameterTypes) {
-				paramList.addAll(this.parseReqeustParameters(parameterType));
+			for (int i = 0; i < parameterTypes.length; i++) {
+				Class<?> parameterType = parameterTypes[i];
+				if (parameterType.equals(Integer.class) || parameterType.getName().equals("int")
+						|| parameterType.equals(Long.class) || parameterType.getName().equals("long")
+						) {
+					paramList.add(this.parseRequestConstParameters(parameterType, method.getParameters()[i]));
+				}else {
+					paramList.addAll(this.parseReqeustParameters(parameterType));
+				}
 			}
 		}
 		model.put("paramList", paramList);
@@ -158,15 +173,17 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		Class<?> returnType = method.getReturnType();
 		String returnStructure = null;
 		List<Map<String, String>> responseParamList = new ArrayList<Map<String,String>>();
-		if (returnType.getClass().equals(Void.class)) {
+		if (returnType.equals(Void.class) || returnType.getName().equals("void")) {
 			returnStructure = "Void";
-		} else if (returnType.getClass().equals(Integer.class)) {
+		} else if (returnType.equals(Integer.class) || returnType.getName().equals("int")) {
 			returnStructure = "Integer";
-		} else if (returnType.getClass().equals(Long.class)) {
+		} else if (returnType.equals(Long.class) || returnType.getName().equals("long")) {
 			returnStructure = "Long";
-		} else if (returnType.getClass().equals(BigDecimal.class)) {
+		} else if (returnType.equals(BigDecimal.class)) {
 			returnStructure = "BigDecimal";
-		} else {
+		} else if (returnType.equals(Date.class)) {
+			returnStructure = "Date";
+		}else {
 			try {
 				returnStructure = JSON.toJSONString(returnType.newInstance());
 				// TODO 封装 responseParamList
@@ -179,6 +196,21 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 
 		String pageContent = this.fillupTempalte(model);
 		return new ShowDocItem(categoryName, pageTitle, pageContent);
+	}
+	
+	/**
+	 * 	解析常量类型
+	 * @param parameterType
+	 * @param parameterName
+	 * @return
+	 */
+	private Map<String, String> parseRequestConstParameters(Class<?> parameterType, Parameter parameter) {
+		Map<String, String> map = new HashMap<String, String>();
+		map.put("fieldName", parameter.getName());
+		map.put("mandatory", "否");
+		map.put("fieldDesc", "-");
+		map.put("fieldType", parameterType.getSimpleName());
+		return map;
 	}
 
 	/**
@@ -196,7 +228,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 			SpiritField spiritField = field.getAnnotation(SpiritField.class);
 			if (null == spiritField) {
 				map.put("mandatory", "否");
-				map.put("fieldDesc", "");
+				map.put("fieldDesc", "-");
 			}else {
 				map.put("mandatory", spiritField.mandatory() ? "是" : "否");
 				map.put("fieldDesc", spiritField.desc());
