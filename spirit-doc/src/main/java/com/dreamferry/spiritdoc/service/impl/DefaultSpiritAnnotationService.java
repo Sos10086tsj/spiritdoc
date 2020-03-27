@@ -173,6 +173,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		Class<?> returnType = method.getReturnType();
 		String returnStructure = null;
 		List<Map<String, String>> responseParamList = new ArrayList<Map<String,String>>();
+		model.put("hasResponseDesc", 0);
 		if (returnType.equals(Void.class) || returnType.getName().equals("void")) {
 			returnStructure = "Void";
 		} else if (returnType.equals(Integer.class) || returnType.getName().equals("int")) {
@@ -186,7 +187,8 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		}else {
 			try {
 				returnStructure = JSON.toJSONString(returnType.newInstance());
-				// TODO 封装 responseParamList
+				responseParamList.addAll(this.parseResponseParameters(returnType));
+				model.put("hasResponseDesc", 1);
 			} catch (Exception e) {
 				log.error("{}", e);
 			}
@@ -220,6 +222,26 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 	 * @return
 	 */
 	private List<Map<String, String>> parseReqeustParameters(Class<?> parameterType) {
+		List<Map<String, String>> list = new ArrayList<Map<String,String>>();
+		Field[] fields = parameterType.getDeclaredFields();
+		for (Field field : fields) {
+			Map<String, String> map = new HashMap<String, String>();
+			map.put("fieldName", field.getName());
+			SpiritField spiritField = field.getAnnotation(SpiritField.class);
+			if (null == spiritField) {
+				map.put("mandatory", "否");
+				map.put("fieldDesc", "-");
+			}else {
+				map.put("mandatory", spiritField.mandatory() ? "是" : "否");
+				map.put("fieldDesc", spiritField.desc());
+			}
+			map.put("fieldType", field.getType().getSimpleName());
+			list.add(map);
+		}
+		return list;
+	}
+	
+	private List<Map<String, String>> parseResponseParameters(Class<?> parameterType) {
 		List<Map<String, String>> list = new ArrayList<Map<String,String>>();
 		Field[] fields = parameterType.getDeclaredFields();
 		for (Field field : fields) {
