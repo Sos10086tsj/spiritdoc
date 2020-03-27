@@ -293,7 +293,6 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		parameters.put("cat_name", item.getCategoryName());
 		parameters.put("page_title", item.getPageTitle());
 		parameters.put("page_content", item.getPageContent());
-		System.out.println(JSON.toJSONString(parameters));
 		String responseText = HttpUtil.post(spiritProperties.getShowDocHost(), parameters,
 				"application/x-www-form-urlencoded");
 		JSONObject jo = JSON.parseObject(responseText);

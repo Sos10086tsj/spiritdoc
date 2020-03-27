@@ -1,0 +1,12 @@
+logging:
+  config: classpath:logback-${spring.profiles.active}.xml
+  home: D:/data/logs/${spring.application.name}
+
+spiritDoc:
+  scanPackage: com.dreamferry.spiritdoc
+  showDoc:
+    host: http://localhost/server/index.php?s=/api/item/updateByApi
+    apiKey: 68aac6dcff733d9fe3218b6505f0131c27825
+    apiToken: 65048c04cd8bd311235b9ce2fc73de7525030
+    apiHost: http://localhost:8080/
+    javaApiTemplate: classpath:template/showdoc/Java_API_template.tmpl

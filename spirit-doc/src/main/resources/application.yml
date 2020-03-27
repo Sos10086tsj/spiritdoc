@@ -1,0 +1,22 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: spirit-doc
+  messages:
+    basename: message/errorMessage
+  #gzip压缩配置
+  compression:
+    enabled: true
+    mime-types: application/json ,application/xml,text/html,text/xml,text/plain
+    min-response-size: 2048 #默认就是2048 byte
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  aop:
+    auto: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
