@@ -50,7 +50,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Service("defaultSpiritAnnotationService")
 @Slf4j
-public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
+public class SpiritAnnotationServiceDefaultImpl implements SpiritAnnotationService {
 
 	@Autowired
 	private SpiritProperties spiritProperties;
