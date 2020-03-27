@@ -165,7 +165,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 						) {
 					paramList.add(this.parseRequestConstParameters(parameterType, method.getParameters()[i]));
 				}else {
-					paramList.addAll(this.parseReqeustParameters(parameterType));
+					paramList.addAll(this.parseReqeustParameters(parameterType, null));
 				}
 			}
 		}
@@ -188,7 +188,7 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 		}else {
 			try {
 				returnStructure = JSON.toJSONString(JMockData.mock(returnType));
-				responseParamList.addAll(this.parseResponseParameters(returnType));
+				responseParamList.addAll(this.parseResponseParameters(returnType, null));
 				model.put("hasResponseDesc", 1);
 			} catch (Exception e) {
 				log.error("{}", e);
@@ -222,42 +222,60 @@ public class DefaultSpiritAnnotationService implements SpiritAnnotationService {
 	 * @param parameter
 	 * @return
 	 */
-	private List<Map<String, String>> parseReqeustParameters(Class<?> parameterType) {
+	private List<Map<String, String>> parseReqeustParameters(Class<?> parameterType, String prefix) {
 		List<Map<String, String>> list = new ArrayList<Map<String,String>>();
 		Field[] fields = parameterType.getDeclaredFields();
 		for (Field field : fields) {
 			Map<String, String> map = new HashMap<String, String>();
-			map.put("fieldName", field.getName());
-			SpiritField spiritField = field.getAnnotation(SpiritField.class);
-			if (null == spiritField) {
-				map.put("mandatory", "否");
-				map.put("fieldDesc", "-");
+			map.put("fieldName", (null == prefix ? "" : prefix + ".") + field.getName());
+			Class<?> fieldType = field.getType();
+			map.put("fieldType", fieldType.getSimpleName());
+			
+			if (fieldType.equals(Integer.class) || fieldType.getName().equals("int")
+					|| fieldType.equals(Long.class) || fieldType.getName().equals("long")
+					|| fieldType.equals(String.class)
+					|| fieldType.equals(BigDecimal.class)
+					|| fieldType.equals(Date.class)) {
+				SpiritField spiritField = field.getAnnotation(SpiritField.class);
+				if (null == spiritField) {
+					map.put("mandatory", "否");
+					map.put("fieldDesc", "-");
+				}else {
+					map.put("mandatory", spiritField.mandatory() ? "是" : "否");
+					map.put("fieldDesc", spiritField.desc());
+				}
+				list.add(map);
 			}else {
-				map.put("mandatory", spiritField.mandatory() ? "是" : "否");
-				map.put("fieldDesc", spiritField.desc());
+				list.addAll(this.parseReqeustParameters(fieldType, map.get("fieldName")));
 			}
-			map.put("fieldType", field.getType().getSimpleName());
-			list.add(map);
 		}
 		return list;
 	}
 	
-	private List<Map<String, String>> parseResponseParameters(Class<?> parameterType) {
+	private List<Map<String, String>> parseResponseParameters(Class<?> parameterType, String prefix) {
 		List<Map<String, String>> list = new ArrayList<Map<String,String>>();
 		Field[] fields = parameterType.getDeclaredFields();
 		for (Field field : fields) {
 			Map<String, String> map = new HashMap<String, String>();
-			map.put("fieldName", field.getName());
-			SpiritField spiritField = field.getAnnotation(SpiritField.class);
-			if (null == spiritField) {
-				map.put("mandatory", "否");
-				map.put("fieldDesc", "-");
+			map.put("fieldName", (null == prefix ? "" : prefix + ".") + field.getName());
+			Class<?> fieldType = field.getType();
+			map.put("fieldType", fieldType.getSimpleName());
+			
+			if (fieldType.equals(Integer.class) || fieldType.getName().equals("int")
+					|| fieldType.equals(Long.class) || fieldType.getName().equals("long")
+					|| fieldType.equals(String.class)
+					|| fieldType.equals(BigDecimal.class)
+					|| fieldType.equals(Date.class)) {
+				SpiritField spiritField = field.getAnnotation(SpiritField.class);
+				if (null == spiritField) {
+					map.put("fieldDesc", "-");
+				}else {
+					map.put("fieldDesc", spiritField.desc());
+				}
+				list.add(map);
 			}else {
-				map.put("mandatory", spiritField.mandatory() ? "是" : "否");
-				map.put("fieldDesc", spiritField.desc());
+				list.addAll(this.parseResponseParameters(fieldType, map.get("fieldName")));
 			}
-			map.put("fieldType", field.getType().getSimpleName());
-			list.add(map);
 		}
 		return list;
 	}
